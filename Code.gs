@@ -3,8 +3,19 @@
  * CHANGE THESE VARIABLES PER YOUR PREFERENCES
  * 
  */
-
+// sheet tab name containing the data
 const DATA_TAB_NAME = 'Form Responses 1';
+
+// Set sheet column order (using 0 index). IE: COLUMN A is 0, COLUMN B is 1
+const COLUMN_NUMBER_ISBN = 2;
+const COLUMN_NUMBER_TITLE = 5;
+
+// Set sheet column order for updating from the API details that come back (starting with Column A = 1, Column B = 2)
+const COLUMN_NUMBER_AUTHORS = 7;
+const COLUMN_NUMBER_DESCRIPTION = 8;
+
+// API URL
+const API_URL = "https://www.googleapis.com/books/v1/volumes?country=US";
 
 /**
  * 
@@ -79,36 +90,39 @@ function isbnLookup_(spreadsheetData) {
   for (var i=1; i<lastRow; i++) {
     
     // extract values from row of data for easier reference below
-    var isbn = data[i][2];
-    var title = data[i][5];
+    var isbn = data[i][COLUMN_NUMBER_ISBN];
+    var title = data[i][COLUMN_NUMBER_TITLE];
     
     // only perform this row if the title is blank
     if(title == '') {
 
-      // display Toast notification
       Logger.log('Looking Up ISBN:  ' + isbn);
 
-      // run Function to create Google Folder and return its URL/ID
+      // run Function to get the book info from the API
       var bookData = getBookDetails_(isbn);
 
-      // check new Folder created successfully
+      // set the column number for the update method later
+      var title_column_number = COLUMN_NUMBER_TITLE + 1;
+      
+      // check data came back correctly
       if (bookData) {
 
-        // extract Url/Id for easier reference later
+        // extract details into vars for easier reference later
         var title = (bookData["volumeInfo"]["title"]);
         var description = (bookData["volumeInfo"]["description"]);
         var authors = (bookData["volumeInfo"]["authors"]);
 
-        dataSheet.getRange(i+1, 6).setValue(title);
-        dataSheet.getRange(i+1, 7).setValue(authors);
-        dataSheet.getRange(i+1, 8).setValue(description);
+        // set values in apropriate columns
+        dataSheet.getRange(i+1, title_column_number).setValue(title);
+        dataSheet.getRange(i+1, COLUMN_NUMBER_AUTHORS).setValue(authors);
+        dataSheet.getRange(i+1, COLUMN_NUMBER_DESCRIPTION).setValue(description);
         
         // write all pending updates to the google sheet using flush() method
         SpreadsheetApp.flush();
         
       } else {
-        // write error into 'Title' cell and return false value
-        dataSheet.getRange(i+1, 2).setValue('Error finding ISBN data. Please see Logs');
+        // write error into Title cell and return false value
+        dataSheet.getRange(i+1, title_column_number).setValue('Error finding ISBN data. Please see Logs');
         return false;
       }
 
@@ -131,7 +145,7 @@ function getBookDetails_(isbn) {
   // Query the book database by ISBN code.
   //isbn = isbn || "9781451648546"; // Steve Jobs book
 
-  var url = "https://www.googleapis.com/books/v1/volumes?country=US&q=isbn:" + isbn;
+  var url = API_URL + "&q=isbn:" + isbn;
 
   var response = UrlFetchApp.fetch(url);
   var results = JSON.parse(response);
